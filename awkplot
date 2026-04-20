@@ -1,0 +1,3 @@
+#!/usr/bin/env python3
+from awkplot_cli import main
+main()

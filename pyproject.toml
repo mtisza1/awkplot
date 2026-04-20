@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "awkplot"
+version = "0.1.0"
+description = "awk piped to uplot — terminal plots that feel like awk"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+[project.scripts]
+awkplot = "awkplot_cli:main"
+
+[tool.setuptools]
+py-modules = ["awkplot_cli"]
