@@ -121,4 +121,4 @@ fi
 
 echo
 printf "%sawkplot installed!%s Try:\n" "${c_green}${c_bold}" "${c_reset}"
-printf "  awk 'BEGIN{srand();for(i=0;i<200;i++)print int(rand()*50)}' | awkplot -p hist '{print \$0}'\n"
+printf "  awkplot -p hist 'BEGIN{srand();for(i=0;i<200;i++)print int(rand()*50)}'"

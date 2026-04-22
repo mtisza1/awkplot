@@ -6,10 +6,11 @@ The coding world is shifting its efforts to writing inscrutible `Rust` scripts. 
 
 Instead, we should be reducing our cognitive burden by doing more analysis using the sweet, sweet `awk` syntax. `Rust` advocates will tremble when they see you enjoying a relaxing terminal session with `awkplot`, absolutely dominating tabular data.
 
+![example](images/awkplot_ex3.png)
+
 
 ```
 awkplot [awkplot-opts] [awk-opts] 'awk program' [file ...]
-awkplot [awkplot-opts] [awk-opts] -f prog.awk   [file ...]
 ```
 
 ## What's the point of this?
