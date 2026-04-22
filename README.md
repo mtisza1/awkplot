@@ -2,27 +2,55 @@
 
 `awk` piped to [`uplot`](https://github.com/red-data-tools/YouPlot) for terminal-only plots that feel like writing awk on the command line.
 
+The coding world is shifting its efforts to writing inscrutible `Rust` scripts. This is mistake. Speed? Type safety? Who needs it!
+
+Instead, we should be reducing our cognitive burden by doing more analysis using the sweet, sweet `awk` syntax. `Rust` advocates will tremble when they see you enjoying a relaxing terminal session with `awkplot`, absolutely dominating tabular data.
+
+
 ```
 awkplot [awkplot-opts] [awk-opts] 'awk program' [file ...]
 awkplot [awkplot-opts] [awk-opts] -f prog.awk   [file ...]
 ```
 
-## Requirements
+## What's the point of this?
 
-```bash
-brew install gawk youplot
-```
+Good question. You *COULD* just pipe awk to `uplot` yourself, but it just feels better doing it this way.
+
+## Dependencies
+
+- awk or gawk
+- youplot
 
 ## Install
 
-**Option A — drop on PATH (no Python packaging):**
+**Option A — one-liner (macOS / Linux):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mtisza1/awkplot/main/install.sh | bash
+```
+
+The installer checks for `python3`, `awk`, and `uplot`, installs `uplot` via Homebrew (macOS) or RubyGems/apt (Linux) if missing, then drops `awkplot` into `~/.local/bin`.
+
+Customize with env vars:
+
+```bash
+# install to a different dir
+AWKPLOT_PREFIX=/usr/local/bin curl -fsSL .../install.sh | bash
+
+# skip dep installation (bring your own uplot)
+AWKPLOT_SKIP_DEPS=1 curl -fsSL .../install.sh | bash
+```
+
+**Option B — drop on PATH manually:**
+
+First, clone this repo.
 
 ```bash
 chmod +x awkplot
 cp awkplot awkplot_cli.py /usr/local/bin/   # or any dir on your PATH
 ```
 
-**Option B — pip:**
+**Option C — pip:**
 
 ```bash
 pip install .
