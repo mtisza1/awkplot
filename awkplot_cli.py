@@ -5,13 +5,23 @@ Usage: awkplot [awkplot-opts] [awk-opts] 'awk program' [file ...]
 """
 
 import argparse
+import os
 import shlex
 import shutil
 import signal
 import subprocess
 import sys
 
+__version__ = "0.1.0"
+
 PLOT_TYPES = ["hist", "bar", "line", "lineplot", "scatter", "density", "box", "count"]
+
+# Flags that belong to awkplot and should not appear after the awk program
+_AWKPLOT_FLAGS = {
+    "-p", "--plot", "-H", "--header", "-c", "--colors",
+    "-s", "--size", "-t", "--title", "-d", "--delimiter",
+    "--dry-run", "--uplot-args", "--version",
+}
 
 
 def build_parser():
@@ -34,6 +44,8 @@ plot options:
   -t TITLE         plot title  (uplot --title)
   -d DELIM         output column delimiter passed to uplot  (uplot --delimiter)
   --dry-run        print the awk | uplot command without running it
+  --uplot-args     extra arguments passed through to uplot (quote the string)
+  --version        show version and exit
 
 examples:
   awkplot -p hist '{print $3}' data.tsv
@@ -69,6 +81,11 @@ examples:
     p.add_argument("--dry-run", dest="dry_run", action="store_true",
                    help="print the command pipeline without executing")
 
+    p.add_argument("--uplot-args", dest="uplot_args", metavar="ARGS",
+                   help="extra arguments passed through to uplot (quote the string)")
+
+    p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+
     # ── positionals ───────────────────────────────────────────────────────────
     p.add_argument("args", nargs=argparse.REMAINDER,
                    help="awk program (first arg) then input files, or just files when -f is used")
@@ -97,6 +114,20 @@ def check_deps():
         sys.exit("awkplot: required tools not found on PATH:\n  " + "\n  ".join(missing))
 
 
+def _check_swallowed_flags(positionals):
+    """Error out if any positional looks like an awkplot flag that was
+    placed after the awk program (and therefore swallowed by REMAINDER)."""
+    for token in positionals:
+        if token in _AWKPLOT_FLAGS or (token.startswith("-") and not os.path.exists(token)):
+            # Heuristic: if a token starts with '-' and is not an existing
+            # file, it is almost certainly a misplaced flag.
+            sys.exit(
+                f"awkplot: unrecognised or misplaced option {token!r}\n"
+                "  hint: all awkplot/uplot flags must come *before* the awk program\n"
+                "  usage: awkplot [opts] 'awk program' [file ...]"
+            )
+
+
 def build_awk_cmd(ns):
     cmd = ["awk"]
     if ns.field_sep is not None:
@@ -109,14 +140,19 @@ def build_awk_cmd(ns):
     positionals = ns.args
     if ns.prog_files:
         # all positionals are input files
+        _check_swallowed_flags(positionals)
         cmd += positionals
     else:
         # first positional is the awk program
         if not positionals:
-            sys.exit("awkplot: awk program required as first positional argument\n"
-                     "  hint: awkplot [opts] 'awk program' [file ...]")
-        cmd.append(positionals[0])
-        cmd += positionals[1:]
+            # Default to '{print}' so stdin-only invocations work
+            # (e.g.  some_cmd | awkplot -p hist)
+            cmd.append("{print}")
+        else:
+            cmd.append(positionals[0])
+            files = positionals[1:]
+            _check_swallowed_flags(files)
+            cmd += files
 
     return cmd
 
@@ -137,6 +173,8 @@ def build_uplot_cmd(ns):
         cmd += ["--title", ns.title]
     if ns.delimiter:
         cmd += ["--delimiter", ns.delimiter]
+    if ns.uplot_args:
+        cmd += shlex.split(ns.uplot_args)
     return cmd
 
 
@@ -155,25 +193,29 @@ def main():
 
     # ── execute pipeline ───────────────────────────────────────────────────────
     # Ignore SIGPIPE in the parent so closing the write end doesn't crash us.
-    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+    if hasattr(signal, "SIGPIPE"):
+        signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
     try:
         awk_proc = subprocess.Popen(awk_cmd, stdout=subprocess.PIPE)
-        uplot_proc = subprocess.Popen(uplot_cmd, stdin=awk_proc.stdout)
-        # Let awk_proc receive SIGPIPE if uplot exits early.
-        awk_proc.stdout.close()
+        awk_output, _ = awk_proc.communicate()
+        awk_rc = awk_proc.returncode
 
-        uplot_rc = uplot_proc.wait()
-        awk_rc = awk_proc.wait()
+        if awk_rc != 0:
+            sys.exit(awk_rc)
+
+        if not awk_output or not awk_output.strip():
+            sys.exit("awkplot: awk produced no output")
+
+        uplot_proc = subprocess.Popen(uplot_cmd, stdin=subprocess.PIPE)
+        uplot_proc.communicate(input=awk_output)
+        uplot_rc = uplot_proc.returncode
 
     except KeyboardInterrupt:
         sys.exit(130)
     except FileNotFoundError as e:
         sys.exit(f"awkplot: {e}")
 
-    # Surface the first non-zero exit code, awk takes priority.
-    if awk_rc != 0:
-        sys.exit(awk_rc)
     if uplot_rc != 0:
         sys.exit(uplot_rc)
 
