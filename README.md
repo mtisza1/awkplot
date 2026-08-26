@@ -78,6 +78,8 @@ pip install .
 | `-t TITLE` | Plot title |
 | `-d DELIM` | Output column delimiter for uplot |
 | `--dry-run` | Print the `awk \| uplot` command without running it |
+| `--uplot-args ARGS` | Extra arguments passed through to uplot (quote the string) |
+| `--version` | Show version and exit |
 | `--help` | Show usage |
 
 ## Examples
